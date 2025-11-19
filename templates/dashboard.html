@@ -137,11 +137,24 @@ async function checkScrapeStatus() {
                 statusDiv.innerHTML = `<div class="alert alert-error">Scraper failed: ${status.error}</div>`;
             } else if (status.last_result) {
                 const result = status.last_result;
+                let html = '';
+
                 if (result.success) {
-                    statusDiv.innerHTML = `<div class="alert alert-success">✓ Scraping completed! Found ${result.new_jobs} new job(s). Total jobs: ${result.total_jobs}. <a href="#" onclick="location.reload()">Refresh page</a> to see updates.</div>`;
+                    html = `<div class="alert alert-success">✓ Scraping completed! Found ${result.new_jobs} new job(s). Total jobs: ${result.total_jobs}.`;
+
+                    if (result.errors && result.errors.length > 0) {
+                        html += `<br><br><strong>Warning:</strong> Some companies had errors:<br>`;
+                        result.errors.forEach(err => {
+                            html += `<span style="font-size: 0.9em;">• ${err}</span><br>`;
+                        });
+                    }
+
+                    html += ` <a href="#" onclick="location.reload()">Refresh page</a> to see updates.</div>`;
                 } else {
-                    statusDiv.innerHTML = '<div class="alert alert-error">Scraper completed with errors. Check logs for details.</div>';
+                    html = '<div class="alert alert-error">Scraper completed with errors. Check logs for details.</div>';
                 }
+
+                statusDiv.innerHTML = html;
             }
         } else {
             // Still running - update button text

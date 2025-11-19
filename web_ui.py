@@ -229,10 +229,12 @@ def run_scraper_background():
 
         # Parse output to get stats
         output = result.stdout
+        stderr = result.stderr
         new_jobs = 0
         total_jobs = 0
+        errors = []
 
-        # Extract numbers from output
+        # Extract numbers and errors from output
         for line in output.split('\n'):
             if 'New jobs found:' in line:
                 try:
@@ -244,11 +246,15 @@ def run_scraper_background():
                     total_jobs = int(line.split(':')[1].strip())
                 except:
                     pass
+            if 'Error scraping' in line:
+                errors.append(line.strip())
 
         scraping_status['last_result'] = {
             'new_jobs': new_jobs,
             'total_jobs': total_jobs,
-            'success': result.returncode == 0
+            'success': result.returncode == 0,
+            'errors': errors,
+            'output': output  # Include full output for debugging
         }
         scraping_status['last_run'] = datetime.now().isoformat()
 
@@ -320,6 +326,14 @@ def add_board():
                 value = request.form.get(f'selector_{key}', '').strip()
                 if value:
                     selectors[key] = value
+
+            # Validate required selectors
+            required = ['job_container', 'title', 'link']
+            missing = [r for r in required if r not in selectors]
+            if missing:
+                flash(f"Error: Generic boards require these selectors: {', '.join(missing)}. Use auto-detect or fill manually.", 'error')
+                return redirect(url_for('add_board'))
+
             new_board['selectors'] = selectors
 
         # Add to config
