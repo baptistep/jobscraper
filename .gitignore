@@ -13,7 +13,8 @@ ENV/
 data.json
 jobs.json
 *.csv
-*.txt
+job*.txt
+export*.txt
 logs/*.log
 
 # Config (contains sensitive data)
