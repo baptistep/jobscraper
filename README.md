@@ -4,14 +4,26 @@ An automated job board scraper that runs twice daily to fetch new job postings f
 
 ## Features
 
-- **Web Interface**: Beautiful, simple web UI to view jobs, manage companies, and add new trackers
-- **Multiple Job Board Support**: Works with Greenhouse, Lever, Ashby, Next.js, generic job boards, and custom APIs
-- **Automatic Deduplication**: Prevents duplicate job postings
+### Web Interface
+- **Beautiful Dashboard**: Clean, modern UI to view all jobs at a glance
+- **Company Management**: Enable/disable/delete tracked companies
+- **Manual Scrape Trigger**: Run scraper on-demand from the dashboard
+- **Real-time Status**: Live updates while scraping with error reporting
+- **Smart Sorting**: Jobs automatically sorted by scrape date (newest first)
+- **New Job Highlighting**: Blue badges for jobs found in last 24 hours
+
+### Scraping Capabilities
+- **Auto-detect CSS Selectors**: Automatically detect selectors for generic job boards
+- **Multiple Board Types**: Greenhouse, Lever, Ashby, Next.js, generic sites, custom APIs
+- **Smart Lever Fallback**: Tries JSON API first, falls back to HTML parsing automatically
+- **Error Reporting**: Clear error messages when companies fail to scrape
+- **Automatic Deduplication**: MD5 hash-based job ID prevents duplicates
+
+### Automation & Configuration
 - **Scheduled Execution**: Runs twice daily (9 AM & 6 PM) via launchd/cron
-- **Easy Configuration**: JSON-based config that's simple to share and modify
-- **Extensible**: Add new job boards without touching code
-- **Data Persistence**: Stores jobs in JSON format with automatic cleanup
-- **New Job Highlighting**: Automatically highlights jobs scraped in the last 24 hours
+- **JSON Configuration**: Easy to share and modify
+- **Data Persistence**: All jobs stored in JSON with automatic 30-day cleanup
+- **Validation**: Prevents adding incomplete company configurations
 
 ## Technology Stack
 
@@ -117,16 +129,28 @@ Then open your browser to **http://localhost:5001**
 
 The web interface provides:
 - **Dashboard**: Overview of all tracked companies and their jobs
-- **Companies Tracked**: Manage your tracked companies (enable/disable/delete)
-- **Add New Company**: Easy form to add new job boards
-- **Job Listings**: View all jobs with new ones highlighted
-- **Sorting**: Jobs automatically sorted by most recently scraped
+  - "Run Scraper Now" button for manual scraping
+  - Real-time status updates with progress and error messages
+  - Stats cards showing total jobs, new jobs (24h), and active companies
+- **Companies Tracked**: Full company management
+  - Enable/disable individual companies
+  - Delete companies you no longer want to track
+  - View configuration and scraping status
+- **Add New Company**: Intelligent form with auto-detection
+  - Auto-detect button to find CSS selectors automatically
+  - Support for Greenhouse, Lever, Ashby, Next.js, and generic boards
+  - Form validation to prevent incomplete configurations
+- **Job Listings**: Beautiful job cards with smart features
+  - Blue "NEW" badges for jobs found in last 24 hours
+  - Grouped by company with job counts
+  - Automatic sorting by scrape date (newest first)
+  - Direct links to apply
 
 ## Supported Job Board Types
 
 ### 1. Generic Boards (Custom CSS Selectors)
 
-For any job board, you just need to find the CSS selectors:
+For any job board, you can use custom CSS selectors:
 
 ```json
 {
@@ -145,11 +169,23 @@ For any job board, you just need to find the CSS selectors:
 }
 ```
 
-**How to find selectors:**
+**✨ Auto-Detection Feature:**
+Use the web interface's "Add New Company" form and click the **"Auto-detect"** button. The scraper will:
+1. Fetch the careers page
+2. Analyze the HTML structure
+3. Try common job listing patterns (div.job, div.job-listing, etc.)
+4. Automatically fill in the CSS selectors
+5. Show you how many job listings it found
+
+**Manual Method:**
+If auto-detection doesn't work, find selectors manually:
 1. Open the job board in your browser
 2. Right-click on a job listing → Inspect
 3. Find the CSS selector for each element
 4. Test selectors in browser console: `document.querySelectorAll('your-selector')`
+
+**Required selectors:** `job_container`, `title`, `link`
+**Optional selectors:** `location`, `description`, `date_posted`
 
 ### 2. Greenhouse Boards
 
