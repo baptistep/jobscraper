@@ -13,6 +13,32 @@ An automated job board scraper that runs twice daily to fetch new job postings f
 - **Data Persistence**: Stores jobs in JSON format with automatic cleanup
 - **New Job Highlighting**: Automatically highlights jobs scraped in the last 24 hours
 
+## Technology Stack
+
+This project is built with **Python 3** and uses the following frameworks and libraries:
+
+### Core Scraping
+- **[requests](https://requests.readthedocs.io/)** - HTTP library for fetching web pages and making API calls
+- **[BeautifulSoup4](https://www.crummy.com/software/BeautifulSoup/)** - HTML/XML parsing library for extracting job data from web pages
+- **[lxml](https://lxml.de/)** - Fast XML and HTML parser used by BeautifulSoup for improved performance
+
+### Web Interface
+- **[Flask](https://flask.palletsprojects.com/)** - Lightweight Python web framework for the job viewing interface
+- **Jinja2** (included with Flask) - Template engine for rendering HTML pages
+
+### Why These Technologies?
+
+- **BeautifulSoup4**: Industry-standard for web scraping in Python. Easy to learn, powerful CSS selector support, and handles messy HTML gracefully.
+- **requests**: Simple, human-friendly HTTP library. Perfect for both fetching HTML pages and calling REST APIs.
+- **Flask**: Minimal setup required, perfect for small web UIs. No database needed - reads directly from JSON files.
+- **Python 3**: Cross-platform, extensive library ecosystem, and readable syntax makes it ideal for automation scripts.
+
+### Requirements
+
+- Python 3.7 or higher
+- Works on macOS, Linux, and Windows (with minor adjustments to scheduling)
+- No database required - uses JSON file storage
+
 ## Quick Start
 
 ### 1. Clone or Download This Repository
@@ -169,6 +195,79 @@ For job boards with public APIs:
   }
 }
 ```
+
+## How It Works
+
+### Scraping Architecture
+
+The scraper uses a modular architecture with specialized scrapers for different job board types:
+
+```
+User Config (config.json)
+    ↓
+JobScraper Class (scraper.py)
+    ↓
+Board Type Detection
+    ├── Generic Scraper → BeautifulSoup + CSS Selectors
+    ├── Greenhouse Scraper → API calls (boards.greenhouse.io/embed/*)
+    ├── Lever Scraper → API calls (api.lever.co/v0/postings/*)
+    ├── Ashby Scraper → Embedded JSON extraction
+    ├── Next.js Scraper → __NEXT_DATA__ JSON parsing
+    └── API Scraper → Direct REST API calls
+    ↓
+Data Processing
+    ├── Deduplication (MD5 hash of job URL)
+    ├── Job aging (remove old jobs)
+    └── Format standardization
+    ↓
+Output (jobs.json)
+```
+
+### Scraping Process
+
+1. **Board Type Detection**: The scraper reads your `config.json` and determines which scraper to use based on the `type` field
+
+2. **Data Extraction**:
+   - **Generic**: Uses BeautifulSoup to parse HTML and extract data using your CSS selectors
+   - **Greenhouse/Lever**: Makes API calls to get structured JSON data (faster and more reliable)
+   - **Ashby/Next.js**: Extracts embedded JSON data from `<script>` tags on the page
+   - **API**: Makes direct REST API calls with optional custom headers
+
+3. **Data Normalization**: All jobs are converted to a standard format:
+   ```json
+   {
+     "title": "Software Engineer",
+     "company": "Company Name",
+     "location": "San Francisco, CA",
+     "url": "https://...",
+     "date_posted": "2024-01-15",
+     "source": "Company Name",
+     "scraped_at": "2024-01-20T09:00:00",
+     "id": "unique-hash-here"
+   }
+   ```
+
+4. **Deduplication**: Each job gets a unique ID (MD5 hash of the URL). Duplicate jobs are automatically filtered out.
+
+5. **Job Aging**: Jobs older than `max_age_days` (default: 30) are automatically removed to keep the dataset fresh.
+
+### Why BeautifulSoup?
+
+BeautifulSoup4 is the scraping library because:
+- **Robust HTML Parsing**: Handles broken, malformed, or messy HTML gracefully
+- **Multiple Parser Support**: Can use lxml (fast), html.parser (built-in), or html5lib (most lenient)
+- **CSS Selectors**: Easy-to-use CSS selector syntax (`soup.select('.job-title')`)
+- **Navigation**: Intuitive tree navigation (`.find()`, `.find_all()`, `.parent`, `.children`)
+- **Encoding Detection**: Automatically handles different character encodings
+- **Community**: Extensive documentation and community support
+
+### Performance Considerations
+
+- **Request Delays**: Built-in delays between requests to be respectful to servers
+- **Efficient Parsing**: Uses lxml parser for fast HTML parsing
+- **API First**: Prefers official APIs (Greenhouse, Lever) over HTML scraping when available
+- **JSON Storage**: Lightweight file-based storage, no database overhead
+- **Incremental Updates**: Only processes new jobs, doesn't re-scrape existing data
 
 ## Configuration Reference
 
