@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - DailyScraper{% endblock %}
+
+{% block content %}
+<h1 style="margin-bottom: 2rem;">Dashboard</h1>
+
+<div class="stats">
+    <div class="stat-card">
+        <div class="stat-number">{{ total_jobs }}</div>
+        <div class="stat-label">Total Jobs</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ new_jobs_count }}</div>
+        <div class="stat-label">New Jobs (24h)</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ active_boards }}</div>
+        <div class="stat-label">Active Companies</div>
+    </div>
+</div>
+
+{% for source, jobs in grouped_jobs.items() %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">
+            {{ source }}
+            <span style="color: #86868b; font-weight: normal; font-size: 0.9rem;">({{ jobs|length }} jobs)</span>
+        </h2>
+        <a href="/jobs/{{ source }}" class="btn btn-secondary btn-small">View All</a>
+    </div>
+
+    <div>
+        {% for job in jobs[:5] %}
+        <div class="job-item {% if job.is_new %}new{% endif %}">
+            <div class="job-info">
+                <div class="job-title">
+                    {{ job.title }}
+                    {% if job.is_new %}
+                    <span class="badge badge-new">NEW</span>
+                    {% endif %}
+                </div>
+                <div class="job-meta">
+                    {% if job.location %}{{ job.location }} • {% endif %}
+                    {% if job.department %}{{ job.department }} • {% endif %}
+                    {% if job.date_posted %}Posted: {{ job.date_posted }}{% endif %}
+                </div>
+            </div>
+            <a href="{{ job.url }}" target="_blank" class="btn btn-secondary btn-small">View Job</a>
+        </div>
+        {% endfor %}
+
+        {% if jobs|length > 5 %}
+        <div style="padding: 1rem; text-align: center; color: #86868b;">
+            + {{ jobs|length - 5 }} more jobs
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+
+{% if not grouped_jobs %}
+<div class="card">
+    <div style="text-align: center; padding: 2rem; color: #86868b;">
+        <p>No jobs found. Add some companies to track to get started!</p>
+        <a href="/boards/add" class="btn btn-primary" style="margin-top: 1rem;">Add Company</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

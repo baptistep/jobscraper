@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if source %}Jobs at {{ source }}{% else %}All Jobs{% endif %} - DailyScraper
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h1>{% if source %}Jobs at {{ source }}{% else %}All Jobs{% endif %}</h1>
+    {% if source %}
+    <a href="/jobs" class="btn btn-secondary">View All Jobs</a>
+    {% endif %}
+</div>
+
+{% if jobs %}
+<div class="card">
+    {% for job in jobs %}
+    <div class="job-item {% if job.is_new %}new{% endif %}">
+        <div class="job-info">
+            <div class="job-title">
+                {{ job.title }}
+                {% if job.is_new %}
+                <span class="badge badge-new">NEW</span>
+                {% endif %}
+            </div>
+            <div class="job-meta">
+                <strong>{{ job.company or job.source }}</strong>
+                {% if job.location %} • {{ job.location }}{% endif %}
+                {% if job.department %} • {{ job.department }}{% endif %}
+                {% if job.employment_type %} • {{ job.employment_type }}{% endif %}
+                <br>
+                {% if job.date_posted %}Posted: {{ job.date_posted }} • {% endif %}
+                Scraped: {{ job.scraped_at[:10] if job.scraped_at else 'N/A' }}
+            </div>
+        </div>
+        <a href="{{ job.url }}" target="_blank" class="btn btn-secondary btn-small">View Job</a>
+    </div>
+    {% endfor %}
+</div>
+
+<div style="text-align: center; color: #86868b; margin-top: 1rem;">
+    Total: {{ jobs|length }} job{{ 's' if jobs|length != 1 else '' }}
+</div>
+{% else %}
+<div class="card">
+    <div style="text-align: center; padding: 2rem; color: #86868b;">
+        <p>No jobs found{% if source %} for {{ source }}{% endif %}.</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

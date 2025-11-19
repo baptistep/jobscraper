@@ -1,0 +1,38 @@
+{
+  "job_boards": [
+    {
+      "name": "Photoroom",
+      "url": "https://jobs.ashbyhq.com/photoroom",
+      "type": "ashby",
+      "enabled": false
+    },
+    {
+      "name": "Bending Spoons",
+      "url": "https://jobs.bendingspoons.com/",
+      "type": "nextjs",
+      "enabled": false,
+      "note": "Bending Spoons uses Next.js with embedded JSON data."
+    },
+    {
+      "name": "Shop Circle",
+      "url": "https://shopcircle.co/pages/careers",
+      "type": "generic",
+      "enabled": false,
+      "selectors": {
+        "job_container": "a[href*='linkedin.com/jobs']",
+        "title": "a[href*='linkedin.com/jobs']",
+        "link": "a[href*='linkedin.com/jobs']"
+      },
+      "note": "Shop Circle links to LinkedIn job postings. Simple HTML structure."
+    }
+  ],
+  "settings": {
+    "output_file": "jobs.json",
+    "dedupe": true,
+    "max_age_days": 30,
+    "notifications": {
+      "enabled": false,
+      "email": ""
+    }
+  }
+}

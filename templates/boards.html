@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Companies Tracked - DailyScraper{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h1>Companies Tracked</h1>
+    <a href="/boards/add" class="btn btn-primary">Add New Company</a>
+</div>
+
+{% if job_boards %}
+<div class="card">
+    {% for board in job_boards %}
+    <div class="job-item">
+        <div class="job-info">
+            <div class="job-title">
+                {{ board.name }}
+                {% if board.enabled %}
+                <span class="badge badge-enabled">ENABLED</span>
+                {% else %}
+                <span class="badge badge-disabled">DISABLED</span>
+                {% endif %}
+            </div>
+            <div class="job-meta">
+                Type: {{ board.type }} • URL: <a href="{{ board.url }}" target="_blank">{{ board.url }}</a>
+            </div>
+        </div>
+        <div class="board-actions">
+            <a href="/boards/toggle/{{ loop.index0 }}" class="btn btn-secondary btn-small">
+                {% if board.enabled %}Disable{% else %}Enable{% endif %}
+            </a>
+            <a href="/boards/delete/{{ loop.index0 }}"
+               class="btn btn-danger btn-small"
+               onclick="return confirm('Are you sure you want to delete this board?')">
+                Delete
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div style="text-align: center; padding: 2rem; color: #86868b;">
+        <p>No companies being tracked yet.</p>
+        <a href="/boards/add" class="btn btn-primary" style="margin-top: 1rem;">Add Your First Company</a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
