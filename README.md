@@ -1,11 +1,10 @@
 # Job Board Scraper
-
-An automated job board scraper that runs twice daily to fetch new job postings from multiple sources. Easily shareable and configurable for different job boards.
+Monitor easily the new job openings for the companies you're interested in since applying early is so important.
+An automated career websites scraper that runs twice daily to fetch new job postings from the sources you specify. Easily shareable and configurable for different career websites.
 
 ## Features
 
-### Web Interface
-- **Beautiful Dashboard**: Clean, modern UI to view all jobs at a glance
+### Simple Frontend Interface
 - **Company Management**: Enable/disable/delete tracked companies
 - **Manual Scrape Trigger**: Run scraper on-demand from the dashboard
 - **Real-time Status**: Live updates while scraping with error reporting
@@ -38,18 +37,27 @@ This project is built with **Python 3** and uses the following frameworks and li
 - **[Flask](https://flask.palletsprojects.com/)** - Lightweight Python web framework for the job viewing interface
 - **Jinja2** (included with Flask) - Template engine for rendering HTML pages
 
-### Why These Technologies?
-
-- **BeautifulSoup4**: Industry-standard for web scraping in Python. Easy to learn, powerful CSS selector support, and handles messy HTML gracefully.
-- **requests**: Simple, human-friendly HTTP library. Perfect for both fetching HTML pages and calling REST APIs.
-- **Flask**: Minimal setup required, perfect for small web UIs. No database needed - reads directly from JSON files.
-- **Python 3**: Cross-platform, extensive library ecosystem, and readable syntax makes it ideal for automation scripts.
-
 ### Requirements
 
 - Python 3.7 or higher
 - Works on macOS, Linux, and Windows (with minor adjustments to scheduling)
 - No database required - uses JSON file storage
+
+## Contributing
+
+To improve this scraper:
+
+1. Fork the repository
+2. Add your improvements
+3. Submit a pull request
+
+Ideas for contributions:
+- Email notifications when new jobs found
+- Webhook support (Slack, Discord)
+- More board type integrations (Workday, SAP SuccessFactors, etc.)
+- Search/filter functionality in web UI like job types, seniority, location
+- Export jobs to different formats
+- Suggesting similar companies to the ones being scrapped for more job openings
 
 ## Quick Start
 
@@ -289,15 +297,6 @@ Output (jobs.json)
 
 5. **Job Aging**: Jobs older than `max_age_days` (default: 30) are automatically removed to keep the dataset fresh.
 
-### Why BeautifulSoup?
-
-BeautifulSoup4 is the scraping library because:
-- **Robust HTML Parsing**: Handles broken, malformed, or messy HTML gracefully
-- **Multiple Parser Support**: Can use lxml (fast), html.parser (built-in), or html5lib (most lenient)
-- **CSS Selectors**: Easy-to-use CSS selector syntax (`soup.select('.job-title')`)
-- **Navigation**: Intuitive tree navigation (`.find()`, `.find_all()`, `.parent`, `.children`)
-- **Encoding Detection**: Automatically handles different character encodings
-- **Community**: Extensive documentation and community support
 
 ### Performance Considerations
 
@@ -592,21 +591,7 @@ To add support for a new board type:
 - **APIs First**: Use official APIs when available
 - **Personal Use**: This tool is for personal job searching, not commercial data collection
 
-## Contributing
 
-To improve this scraper:
-
-1. Fork the repository
-2. Add your improvements
-3. Submit a pull request
-
-Ideas for contributions:
-- Email notifications when new jobs found
-- Webhook support (Slack, Discord)
-- More board type integrations (Workday, SAP SuccessFactors, etc.)
-- Search/filter functionality in web UI
-- Export jobs to different formats
-- Job alerts based on keywords
 
 ## License
 
