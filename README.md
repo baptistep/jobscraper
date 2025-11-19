@@ -269,6 +269,105 @@ BeautifulSoup4 is the scraping library because:
 - **JSON Storage**: Lightweight file-based storage, no database overhead
 - **Incremental Updates**: Only processes new jobs, doesn't re-scrape existing data
 
+## Storage & Database
+
+### No Traditional Database Required
+
+This project **does not use a traditional database** (PostgreSQL, MySQL, SQLite, etc.). Instead, it uses a simple **JSON file-based storage system** (`jobs.json`). This approach offers several advantages:
+
+- **Zero Configuration**: No database setup, no schema migrations, no SQL queries
+- **Human Readable**: You can open `jobs.json` in any text editor and see exactly what's stored
+- **Portable**: Copy the file anywhere - no database dumps or migrations needed
+- **Version Control Friendly**: Easy to track changes in git (optional)
+- **No Dependencies**: No database drivers, servers, or additional services to manage
+- **Fast for Small Datasets**: Perfectly suited for tracking hundreds to thousands of jobs
+
+### How Job Storage Works
+
+Each time the scraper runs, it:
+
+1. **Loads Existing Jobs** from `jobs.json` (if it exists)
+2. **Scrapes New Jobs** from configured job boards
+3. **Merges Data** - adds new jobs, keeps existing ones
+4. **Removes Duplicates** using the unique job ID (MD5 hash of job URL)
+5. **Cleans Old Jobs** - removes jobs older than `max_age_days`
+6. **Saves Everything** back to `jobs.json`
+
+### Data Structure
+
+The `jobs.json` file contains an array of job objects:
+
+```json
+[
+  {
+    "title": "Senior Software Engineer",
+    "company": "Tech Company",
+    "location": "San Francisco, CA",
+    "description": "",
+    "url": "https://jobs.company.com/posting/12345",
+    "date_posted": "2024-01-15",
+    "source": "Tech Company",
+    "employment_type": "FullTime",
+    "department": "Engineering",
+    "scraped_at": "2024-01-20T09:00:32.123456",
+    "id": "a3f5e8c9d7b2e1f4a6c8b5d9e2f1a4c7"
+  },
+  ...
+]
+```
+
+### New Job Detection & Highlighting
+
+The web interface highlights jobs scraped in the **last 24 hours** using the `scraped_at` timestamp:
+
+```python
+# In web_ui.py
+def is_new_job(job, hours=24):
+    """Check if a job was scraped within the last N hours"""
+    scraped_at = datetime.fromisoformat(job.get('scraped_at', ''))
+    return datetime.now() - scraped_at < timedelta(hours=hours)
+```
+
+**How it works:**
+1. Each job gets a `scraped_at` timestamp when first discovered (e.g., `"2024-01-20T09:00:32.123456"`)
+2. This timestamp **never changes** for that job - it represents when the job was first found
+3. The web UI compares `scraped_at` to the current time
+4. If the difference is less than 24 hours, the job is marked as "new" and highlighted in blue
+
+**Why this approach works:**
+- **Persistent**: Jobs keep their original discovery time even after multiple scraper runs
+- **Accurate**: You always know exactly when a job appeared
+- **Simple**: No complex state tracking or "last seen" logic needed
+- **Reliable**: Works across server restarts and multiple users viewing the UI
+
+### Unique Job Identification
+
+Each job gets a unique ID to prevent duplicates:
+
+```python
+# In scraper.py
+import hashlib
+
+def generate_job_id(url):
+    """Generate unique ID from job URL"""
+    return hashlib.md5(url.encode()).hexdigest()
+```
+
+- **Input**: Job posting URL (e.g., `https://jobs.company.com/posting/12345`)
+- **Output**: 32-character hash (e.g., `a3f5e8c9d7b2e1f4a6c8b5d9e2f1a4c7`)
+- **Deduplication**: If the same URL is scraped again, it gets the same ID and is recognized as a duplicate
+
+### When to Use a Real Database
+
+Consider migrating to a proper database (PostgreSQL, MongoDB, etc.) if:
+- You're tracking **10,000+ jobs** and JSON file loading becomes slow
+- You need **complex queries** (filtering by multiple fields, full-text search, etc.)
+- You want **concurrent access** from multiple users/processes
+- You need **transaction support** or **data integrity guarantees**
+- You're building **analytics** or **reporting features** on top of the data
+
+For most personal job tracking use cases, the JSON file approach is perfectly sufficient and much simpler to manage.
+
 ## Configuration Reference
 
 ### Settings
