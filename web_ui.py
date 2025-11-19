@@ -11,6 +11,9 @@ from datetime import datetime, timedelta
 import requests
 from bs4 import BeautifulSoup
 import re
+import threading
+import subprocess
+import sys
 
 app = Flask(__name__)
 app.secret_key = 'dailyscraper-secret-key-change-in-production'
@@ -19,6 +22,15 @@ app.secret_key = 'dailyscraper-secret-key-change-in-production'
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(BASE_DIR, 'config.json')
 JOBS_PATH = os.path.join(BASE_DIR, 'jobs.json')
+SCRAPER_PATH = os.path.join(BASE_DIR, 'scraper.py')
+
+# Global state for scraping status
+scraping_status = {
+    'running': False,
+    'last_run': None,
+    'last_result': None,
+    'error': None
+}
 
 
 def load_config():
@@ -198,6 +210,61 @@ def auto_detect_selectors(url):
         return {'error': f'Error analyzing page: {str(e)}'}
 
 
+def run_scraper_background():
+    """Run the scraper in the background"""
+    global scraping_status
+
+    try:
+        scraping_status['running'] = True
+        scraping_status['error'] = None
+
+        # Run scraper as subprocess to capture output
+        result = subprocess.run(
+            [sys.executable, SCRAPER_PATH],
+            cwd=BASE_DIR,
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minute timeout
+        )
+
+        # Parse output to get stats
+        output = result.stdout
+        new_jobs = 0
+        total_jobs = 0
+
+        # Extract numbers from output
+        for line in output.split('\n'):
+            if 'New jobs found:' in line:
+                try:
+                    new_jobs = int(line.split(':')[1].strip())
+                except:
+                    pass
+            if 'Total jobs stored:' in line:
+                try:
+                    total_jobs = int(line.split(':')[1].strip())
+                except:
+                    pass
+
+        scraping_status['last_result'] = {
+            'new_jobs': new_jobs,
+            'total_jobs': total_jobs,
+            'success': result.returncode == 0
+        }
+        scraping_status['last_run'] = datetime.now().isoformat()
+
+        if result.returncode != 0:
+            scraping_status['error'] = f"Scraper exited with code {result.returncode}"
+            if result.stderr:
+                scraping_status['error'] += f": {result.stderr[:200]}"
+
+    except subprocess.TimeoutExpired:
+        scraping_status['error'] = 'Scraper timed out after 5 minutes'
+    except Exception as e:
+        scraping_status['error'] = f'Error running scraper: {str(e)}'
+    finally:
+        scraping_status['running'] = False
+
+
 @app.route('/')
 def index():
     """Main dashboard page"""
@@ -280,6 +347,27 @@ def api_auto_detect():
 
     result = auto_detect_selectors(url)
     return jsonify(result)
+
+
+@app.route('/api/scrape', methods=['POST'])
+def api_trigger_scrape():
+    """API endpoint to trigger manual scraping"""
+    global scraping_status
+
+    if scraping_status['running']:
+        return jsonify({'error': 'Scraper is already running'}), 409
+
+    # Start scraper in background thread
+    thread = threading.Thread(target=run_scraper_background, daemon=True)
+    thread.start()
+
+    return jsonify({'message': 'Scraper started', 'status': 'running'})
+
+
+@app.route('/api/scrape/status')
+def api_scrape_status():
+    """API endpoint to check scraper status"""
+    return jsonify(scraping_status)
 
 
 @app.route('/boards/toggle/<int:board_index>')

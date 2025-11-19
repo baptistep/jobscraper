@@ -3,7 +3,14 @@
 {% block title %}Dashboard - DailyScraper{% endblock %}
 
 {% block content %}
-<h1 style="margin-bottom: 2rem;">Dashboard</h1>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+    <h1 style="margin: 0;">Dashboard</h1>
+    <button id="scrapeBtn" class="btn btn-primary" onclick="triggerScrape()">
+        <span id="scrapeBtnText">Run Scraper Now</span>
+    </button>
+</div>
+
+<div id="scrapeStatus" style="margin-bottom: 1rem;"></div>
 
 <div class="stats">
     <div class="stat-card">
@@ -67,4 +74,105 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+let statusCheckInterval = null;
+
+async function triggerScrape() {
+    const button = document.getElementById('scrapeBtn');
+    const buttonText = document.getElementById('scrapeBtnText');
+    const statusDiv = document.getElementById('scrapeStatus');
+
+    // Disable button
+    button.disabled = true;
+    buttonText.textContent = 'Starting scraper...';
+
+    try {
+        const response = await fetch('/api/scrape', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            statusDiv.innerHTML = '<div class="alert alert-success">Scraper is running. This may take a few minutes...</div>';
+
+            // Start polling for status
+            statusCheckInterval = setInterval(checkScrapeStatus, 2000);
+        } else {
+            statusDiv.innerHTML = `<div class="alert alert-error">${result.error || 'Failed to start scraper'}</div>`;
+            button.disabled = false;
+            buttonText.textContent = 'Run Scraper Now';
+        }
+    } catch (error) {
+        statusDiv.innerHTML = `<div class="alert alert-error">Error: ${error.message}</div>`;
+        button.disabled = false;
+        buttonText.textContent = 'Run Scraper Now';
+    }
+}
+
+async function checkScrapeStatus() {
+    const button = document.getElementById('scrapeBtn');
+    const buttonText = document.getElementById('scrapeBtnText');
+    const statusDiv = document.getElementById('scrapeStatus');
+
+    try {
+        const response = await fetch('/api/scrape/status');
+        const status = await response.json();
+
+        if (!status.running) {
+            // Scraping finished
+            clearInterval(statusCheckInterval);
+            statusCheckInterval = null;
+
+            button.disabled = false;
+            buttonText.textContent = 'Run Scraper Now';
+
+            if (status.error) {
+                statusDiv.innerHTML = `<div class="alert alert-error">Scraper failed: ${status.error}</div>`;
+            } else if (status.last_result) {
+                const result = status.last_result;
+                if (result.success) {
+                    statusDiv.innerHTML = `<div class="alert alert-success">✓ Scraping completed! Found ${result.new_jobs} new job(s). Total jobs: ${result.total_jobs}. <a href="#" onclick="location.reload()">Refresh page</a> to see updates.</div>`;
+                } else {
+                    statusDiv.innerHTML = '<div class="alert alert-error">Scraper completed with errors. Check logs for details.</div>';
+                }
+            }
+        } else {
+            // Still running - update button text
+            buttonText.textContent = 'Scraping...';
+        }
+    } catch (error) {
+        console.error('Error checking scrape status:', error);
+    }
+}
+
+// Check if scraper is already running on page load
+window.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const response = await fetch('/api/scrape/status');
+        const status = await response.json();
+
+        if (status.running) {
+            const button = document.getElementById('scrapeBtn');
+            const buttonText = document.getElementById('scrapeBtnText');
+
+            button.disabled = true;
+            buttonText.textContent = 'Scraping...';
+
+            document.getElementById('scrapeStatus').innerHTML = '<div class="alert alert-success">Scraper is currently running...</div>';
+
+            // Start polling
+            statusCheckInterval = setInterval(checkScrapeStatus, 2000);
+        }
+    } catch (error) {
+        console.error('Error checking initial scrape status:', error);
+    }
+});
+</script>
 {% endblock %}
