@@ -179,6 +179,8 @@ Similar to Greenhouse, Lever has a standard structure:
 }
 ```
 
+**Smart Fallback:** The scraper automatically tries Lever's JSON API first (`?mode=json`). If the API is not available (returns HTML instead of JSON), it automatically falls back to HTML parsing. This ensures compatibility with all Lever-based career pages, including those that don't enable the JSON API.
+
 ### 4. Custom APIs
 
 For job boards with public APIs:

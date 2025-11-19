@@ -168,23 +168,70 @@ class JobScraper:
         return jobs
 
     def scrape_lever(self, board: Dict) -> List[Dict]:
-        """Scrape Lever job boards"""
+        """Scrape Lever job boards with JSON API and HTML fallback"""
         jobs = []
         try:
-            # Lever has a JSON endpoint
+            # Try Lever JSON API first
             api_url = board['url'].rstrip('/') + '?mode=json'
             response = requests.get(api_url, headers=self.headers, timeout=15)
 
             if response.status_code == 200:
-                job_listings = response.json()
-                for job_data in job_listings:
+                # Check if response is actually JSON
+                try:
+                    job_listings = response.json()
+                    # Parse JSON response
+                    for job_data in job_listings:
+                        job = {
+                            'title': job_data.get('text', 'No title'),
+                            'company': board.get('name', 'Unknown'),
+                            'location': job_data.get('categories', {}).get('location', ''),
+                            'description': job_data.get('description', '')[:500],
+                            'url': job_data.get('hostedUrl', ''),
+                            'date_posted': str(job_data.get('createdAt', '')),
+                            'source': board['name'],
+                            'scraped_at': datetime.now().isoformat()
+                        }
+                        job['id'] = self.generate_job_id(job)
+                        jobs.append(job)
+                    return jobs
+                except ValueError:
+                    # JSON parsing failed, response is HTML - fall back to HTML parsing
+                    print(f"  Lever JSON API not available for {board['name']}, using HTML fallback")
+                    pass
+
+            # HTML fallback: parse the page directly
+            html_url = board['url'].rstrip('/')
+            response = requests.get(html_url, headers=self.headers, timeout=15)
+
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, 'lxml')
+                postings = soup.find_all('div', class_='posting')
+
+                for posting in postings:
+                    # Extract title
+                    title_elem = posting.find('h5')
+                    title = title_elem.get_text(strip=True) if title_elem else 'No title'
+
+                    # Extract link
+                    link_elem = posting.find('a', href=True)
+                    url = link_elem.get('href', '') if link_elem else ''
+
+                    # Extract location
+                    location_elem = posting.find(class_='location')
+                    location = location_elem.get_text(strip=True) if location_elem else ''
+
+                    # Extract team/department if available
+                    department_elem = posting.find(class_='department')
+                    department = department_elem.get_text(strip=True) if department_elem else ''
+
                     job = {
-                        'title': job_data.get('text', 'No title'),
+                        'title': title,
                         'company': board.get('name', 'Unknown'),
-                        'location': job_data.get('categories', {}).get('location', ''),
-                        'description': job_data.get('description', '')[:500],
-                        'url': job_data.get('hostedUrl', ''),
-                        'date_posted': str(job_data.get('createdAt', '')),
+                        'location': location,
+                        'department': department,
+                        'description': '',  # HTML version doesn't have description on listing page
+                        'url': url,
+                        'date_posted': '',  # HTML version doesn't have date on listing page
                         'source': board['name'],
                         'scraped_at': datetime.now().isoformat()
                     }
