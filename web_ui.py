@@ -8,6 +8,9 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 import json
 import os
 from datetime import datetime, timedelta
+import requests
+from bs4 import BeautifulSoup
+import re
 
 app = Flask(__name__)
 app.secret_key = 'dailyscraper-secret-key-change-in-production'
@@ -65,6 +68,134 @@ def group_jobs_by_source(jobs):
         grouped[source].sort(key=lambda x: x.get('scraped_at', ''), reverse=True)
 
     return grouped
+
+
+def auto_detect_selectors(url):
+    """
+    Automatically detect CSS selectors for a job board URL
+    Returns a dict of detected selectors or error message
+    """
+    try:
+        # Fetch the page
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.text, 'lxml')
+
+        # Common patterns for job listings
+        job_patterns = [
+            # Class-based patterns
+            {'selector': 'div.job', 'priority': 1},
+            {'selector': 'div.job-listing', 'priority': 1},
+            {'selector': 'div.job-item', 'priority': 1},
+            {'selector': 'div.position', 'priority': 1},
+            {'selector': 'div.opening', 'priority': 1},
+            {'selector': 'div.posting', 'priority': 1},
+            {'selector': 'div[class*="job"]', 'priority': 2},
+            {'selector': 'div[class*="position"]', 'priority': 2},
+            {'selector': 'div[class*="career"]', 'priority': 2},
+            {'selector': 'article', 'priority': 3},
+            {'selector': 'li.job', 'priority': 1},
+            {'selector': 'li[class*="job"]', 'priority': 2},
+            # ID-based patterns
+            {'selector': 'div#jobs div', 'priority': 2},
+            {'selector': 'div#careers div', 'priority': 2},
+        ]
+
+        # Try each pattern to find job containers
+        job_container_selector = None
+        containers = []
+
+        for pattern in sorted(job_patterns, key=lambda x: x['priority']):
+            containers = soup.select(pattern['selector'])
+            if len(containers) >= 2:  # At least 2 job listings found
+                job_container_selector = pattern['selector']
+                break
+
+        if not job_container_selector or len(containers) < 2:
+            return {'error': 'Could not find multiple job listings on the page. Try manual entry.'}
+
+        # Analyze first container to find title, link, location patterns
+        first_container = containers[0]
+
+        selectors = {
+            'job_container': job_container_selector,
+            'title': '',
+            'link': '',
+            'location': '',
+            'description': '',
+            'date_posted': ''
+        }
+
+        # Detect title selector
+        title_patterns = [
+            'h1', 'h2', 'h3', 'h4',
+            '.title', '.job-title', '.position-title',
+            '[class*="title"]', '[class*="heading"]'
+        ]
+        for pattern in title_patterns:
+            title_elem = first_container.select_one(pattern)
+            if title_elem and title_elem.get_text(strip=True):
+                selectors['title'] = pattern
+                break
+
+        # Detect link selector
+        link_elem = first_container.find('a', href=True)
+        if link_elem:
+            # Try to find most specific selector
+            if link_elem.get('class'):
+                selectors['link'] = f"a.{link_elem['class'][0]}"
+            else:
+                selectors['link'] = 'a'
+
+        # Detect location selector
+        location_patterns = [
+            '.location', '.job-location', '[class*="location"]',
+            '.city', '[class*="city"]',
+            'span:contains("Location")', 'div:contains("Location")'
+        ]
+        for pattern in location_patterns:
+            loc_elem = first_container.select_one(pattern)
+            if loc_elem and loc_elem.get_text(strip=True):
+                selectors['location'] = pattern
+                break
+
+        # Detect date posted selector
+        date_patterns = [
+            'time', '.date', '.posted', '[class*="date"]', '[class*="posted"]'
+        ]
+        for pattern in date_patterns:
+            date_elem = first_container.select_one(pattern)
+            if date_elem:
+                selectors['date_posted'] = pattern
+                break
+
+        # Detect description selector
+        desc_patterns = [
+            '.description', '.summary', 'p', '[class*="description"]'
+        ]
+        for pattern in desc_patterns:
+            desc_elem = first_container.select_one(pattern)
+            if desc_elem and len(desc_elem.get_text(strip=True)) > 20:
+                selectors['description'] = pattern
+                break
+
+        # Filter out empty selectors
+        selectors = {k: v for k, v in selectors.items() if v}
+
+        # Add success info
+        selectors['success'] = True
+        selectors['found_jobs'] = len(containers)
+
+        return selectors
+
+    except requests.RequestException as e:
+        return {'error': f'Failed to fetch URL: {str(e)}'}
+    except Exception as e:
+        return {'error': f'Error analyzing page: {str(e)}'}
 
 
 @app.route('/')
@@ -136,6 +267,19 @@ def add_board():
         return redirect(url_for('boards'))
 
     return render_template('add_board.html')
+
+
+@app.route('/api/auto-detect', methods=['POST'])
+def api_auto_detect():
+    """API endpoint to auto-detect selectors from a URL"""
+    data = request.get_json()
+    url = data.get('url')
+
+    if not url:
+        return jsonify({'error': 'URL is required'}), 400
+
+    result = auto_detect_selectors(url)
+    return jsonify(result)
 
 
 @app.route('/boards/toggle/<int:board_index>')

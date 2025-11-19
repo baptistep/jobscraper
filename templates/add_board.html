@@ -18,8 +18,14 @@
 
         <div class="form-group">
             <label class="form-label" for="url">Careers Page URL</label>
-            <input type="url" id="url" name="url" class="form-input" required
-                   placeholder="https://...">
+            <div style="display: flex; gap: 0.5rem;">
+                <input type="url" id="url" name="url" class="form-input" required
+                       placeholder="https://..." style="flex: 1;">
+                <button type="button" id="autoDetectBtn" class="btn btn-primary" onclick="autoDetect()" style="white-space: nowrap;">
+                    Auto-detect
+                </button>
+            </div>
+            <div id="autoDetectStatus" style="margin-top: 0.5rem; font-size: 0.9rem;"></div>
         </div>
 
         <div class="form-group">
@@ -95,6 +101,70 @@ function toggleSelectors() {
         selectors.classList.add('active');
     } else {
         selectors.classList.remove('active');
+    }
+}
+
+async function autoDetect() {
+    const urlInput = document.getElementById('url');
+    const url = urlInput.value.trim();
+    const statusDiv = document.getElementById('autoDetectStatus');
+    const button = document.getElementById('autoDetectBtn');
+
+    if (!url) {
+        statusDiv.innerHTML = '<span style="color: #ff3b30;">Please enter a URL first</span>';
+        return;
+    }
+
+    // Show loading state
+    button.disabled = true;
+    button.textContent = 'Detecting...';
+    statusDiv.innerHTML = '<span style="color: #86868b;">Analyzing page...</span>';
+
+    try {
+        const response = await fetch('/api/auto-detect', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url: url })
+        });
+
+        const result = await response.json();
+
+        if (result.error) {
+            statusDiv.innerHTML = `<span style="color: #ff3b30;">Error: ${result.error}</span>`;
+        } else if (result.success) {
+            // Set the type to generic
+            document.getElementById('type').value = 'generic';
+            toggleSelectors();
+
+            // Populate the selector fields
+            if (result.job_container) {
+                document.getElementById('selector_job_container').value = result.job_container;
+            }
+            if (result.title) {
+                document.getElementById('selector_title').value = result.title;
+            }
+            if (result.link) {
+                document.getElementById('selector_link').value = result.link;
+            }
+            if (result.location) {
+                document.getElementById('selector_location').value = result.location;
+            }
+            if (result.description) {
+                document.getElementById('selector_description').value = result.description;
+            }
+            if (result.date_posted) {
+                document.getElementById('selector_date_posted').value = result.date_posted;
+            }
+
+            statusDiv.innerHTML = `<span style="color: #34c759;">✓ Found ${result.found_jobs} job listings! Selectors auto-filled.</span>`;
+        }
+    } catch (error) {
+        statusDiv.innerHTML = `<span style="color: #ff3b30;">Error: ${error.message}</span>`;
+    } finally {
+        button.disabled = false;
+        button.textContent = 'Auto-detect';
     }
 }
 
