@@ -1,5 +1,5 @@
 # Job Board Scraper
-Monitor easily the new job openings for the companies you're interested in since applying early is so important.
+Monitor the new job openings for the companies you're interested in since applying early is so important to get a job.
 An automated career websites scraper that runs twice daily to fetch new job postings from the sources you specify. Easily shareable and configurable for different career websites.
 
 ## Features
